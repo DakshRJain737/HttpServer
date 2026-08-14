@@ -1,10 +1,10 @@
 package com.httpserver.http;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -15,16 +15,72 @@ class HttpParserTest {
 
     private HttpParser httpParser;
 
+    @BeforeEach
     public void beforeClass() {
         httpParser = new HttpParser();
     }
 
     @Test
-    void parseHttpRequest() throws IOException {
-        httpParser.parseHttpRequest(generateValidTest());
+    void parseHttpRequest() {
+        try {
+            HttpRequest request = httpParser.parseHttpRequest(generateValidGETTest());
+            assertEquals(request.getMethod(), HttpMethod.GET);
+        } catch (HttpParsingException e) {
+            fail(e);
+        }
     }
 
-    private InputStream generateValidTest() {
+    @Test
+    void parseHttpRequestInvalid() {
+        try {
+            HttpRequest request = httpParser.parseHttpRequest(generateInvalidGETTest());
+            fail();
+        } catch (HttpParsingException e) {
+            assertEquals(e.getErrorCode(), HttpStatusCode.SERVER_ERROR_501_NOT_IMPLEMENTED);
+        }
+    }
+
+    @Test
+    void parseHttpRequestInvalid2() {
+        try {
+            HttpRequest request = httpParser.parseHttpRequest(generateInvalidGETTest2());
+            fail();
+        } catch (HttpParsingException e) {
+            assertEquals(e.getErrorCode(), HttpStatusCode.SERVER_ERROR_501_NOT_IMPLEMENTED);
+        }
+    }
+
+    @Test
+    void parseHttpRequestInvalidNumberOfItems() {
+        try {
+            HttpRequest request = httpParser.parseHttpRequest(generateInvalidRequestLine());
+            fail();
+        } catch (HttpParsingException e) {
+            assertEquals(e.getErrorCode(), HttpStatusCode.CLIENT_ERROR_400_BAD_REQUEST);
+        }
+    }
+
+    @Test
+    void parseHttpEmptyRequestInvalid() {
+        try {
+            HttpRequest request = httpParser.parseHttpRequest(generateEmptyRequestLine());
+            fail();
+        } catch (HttpParsingException e) {
+            assertEquals(e.getErrorCode(), HttpStatusCode.CLIENT_ERROR_400_BAD_REQUEST);
+        }
+    }
+
+    @Test
+    void parseHttpRequestNoLineFeed() {
+        try {
+            HttpRequest request = httpParser.parseHttpRequest(generateInvalidOnlyCRAndNoLF());
+            fail();
+        } catch (HttpParsingException e) {
+            assertEquals(e.getErrorCode(), HttpStatusCode.CLIENT_ERROR_400_BAD_REQUEST);
+        }
+    }
+
+    private InputStream generateValidGETTest() {
         String rawData = "GET / HTTP/1.1\r\n" +
                 "Host: localhost:8080\r\n" +
                 "Connection: keep-alive\r\n" +
@@ -43,9 +99,46 @@ class HttpParserTest {
                 "Accept-Language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6\r\n" +
                 "\r\n";
 
-        InputStream inputStream = new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII));
-
-        return inputStream;
+        return new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII));
     }
-    
+
+    private InputStream generateInvalidGETTest() {
+        String rawData = "GeT / HTTP/1.1\r\n" +
+                "Host: localhost:8080\r\n" +
+                "\r\n";
+
+        return new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private InputStream generateInvalidGETTest2() {
+        String rawData = "GETTTTT / HTTP/1.1\r\n" +
+                "Host: localhost:8080\r\n" +
+                "\r\n";
+
+        return new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private InputStream generateInvalidRequestLine() {
+        String rawData = "GET / AAAAA HTTP/1.1\r\n" +
+                "Host: localhost:8080\r\n" +
+                "\r\n";
+
+        return new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private InputStream generateEmptyRequestLine() {
+        String rawData = "\r\n" +
+                "Host: localhost:8080\r\n" +
+                "\r\n";
+
+        return new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private InputStream generateInvalidOnlyCRAndNoLF() {
+        String rawData = "GET / HTTP/1.1\r" +
+                "Host: localhost:8080\r\n" +
+                "\r\n";
+
+        return new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII));
+    }
 }

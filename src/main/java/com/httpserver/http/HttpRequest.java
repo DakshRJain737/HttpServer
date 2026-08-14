@@ -12,7 +12,15 @@ public class HttpRequest extends HttpMessage {
         return method;
     }
 
-    void setMethod(HttpMethod method) {
-        this.method = method;
+    void setMethod(String methodName) throws HttpParsingException {
+        System.out.println(methodName);
+        for (HttpMethod method : HttpMethod.values()) {
+            System.out.println(method.name());
+            if (methodName.equals(method.name())) {
+                this.method = HttpMethod.valueOf(methodName);
+                return;
+            }
+        }
+        throw new HttpParsingException(HttpStatusCode.SERVER_ERROR_501_NOT_IMPLEMENTED);
     }
 }
